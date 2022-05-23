@@ -15,6 +15,7 @@ class MovieDBNetworkAgentWithURLSession : MovieDBNetworkAgentProtocol{
     
     private init(){}
     
+    
     func getSeriesTrailerVideo(id: Int, completion : @escaping (MDBResult<MovieTrailerResponse>) -> Void){
         
     }

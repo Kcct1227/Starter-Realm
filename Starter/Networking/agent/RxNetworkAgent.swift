@@ -2,7 +2,7 @@
 //  RxNetworkAgent.swift
 //  Starter
 //
-//  Created by KC on 04/05/2022.
+//  Created by KC on 10/05/2022.
 //
 
 import Foundation
@@ -17,17 +17,95 @@ protocol RxNetworkAgentProtocol  {
     func getTopRatedMovieList(page : Int) -> Observable<MovieListResult>
     func getUpcomingMovieList() -> Observable<MovieListResult>
     func getGenreList() -> Observable<MovieGenreList>
-    func getPopularPeople(page : Int) -> Observable<ActorInfoResponse>
+    func getPopularPeople(page : Int) -> Observable<ActorListResponse>
     func getPopularSeriesList() -> Observable<MovieListResult>
+    
+    func getMovieDetailById(id : Int) -> Observable<MovieDetailResponse>
+    func getMovieTrailerVideo(id: Int) -> Observable<MovieTrailerResponse>
+    func getMovieCreditByid(id: Int) -> Observable<MovieCreditResponse>
+    func getSimilarMovieById(id: Int) -> Observable<MovieListResult>
+    
+    func getSereisDetailById(id : Int) -> Observable<SeriesDetailResponse>
+    func getSereisTrailerVideo(id: Int) -> Observable<MovieTrailerResponse>
+    func getSeriesCreditByid(id: Int) -> Observable<MovieCreditResponse>
+    func getSimilarSeriesById(id: Int) -> Observable<MovieListResult>
+    
+    func getActorCombinedList(id: Int)-> Observable<ActorCombinedList>
+    func getActorDetailById(id:Int) -> Observable<ActorDetailResponse>
 }
 
 
 class RxNetworkAgent : BaseNetworkAgent, RxNetworkAgentProtocol{
-   
-
+    
     static let shared = RxNetworkAgent()
     
     private override init(){
+        
+    }
+    
+  
+    
+//    func getActorCombinedList(id: Int) -> Observable<ActorCombinedList> {
+//        RxAlamofire.requestDecodable(MDBEndpoint.actorTVCredits(id))
+//            .flatMap{ item -> Observable<ActorCombinedList> in
+//                return Observable.just(item.1)
+//            }
+//    }
+//
+    
+    func getSimilarSeriesById(id: Int) -> Observable<MovieListResult> {
+        RxAlamofire.requestDecodable(MDBEndpoint.similarSeries(id))
+            .flatMap{ item -> Observable<MovieListResult> in
+                return Observable.just(item.1)
+            }
+    }
+   
+    
+    func getSeriesCreditByid(id: Int) -> Observable<MovieCreditResponse> {
+        RxAlamofire.requestDecodable(MDBEndpoint.seriesActors(id))
+            .flatMap{ item -> Observable<MovieCreditResponse> in
+                return Observable.just(item.1)
+            }
+    }
+    
+    
+    func getSereisTrailerVideo(id: Int) -> Observable<MovieTrailerResponse> {
+        RxAlamofire.requestDecodable(MDBEndpoint.trailerSeriesVideo(id))
+            .flatMap{ item -> Observable<MovieTrailerResponse> in
+                return Observable.just(item.1)
+            }
+    }
+    
+    func getSereisDetailById(id: Int) -> Observable<SeriesDetailResponse> {
+        RxAlamofire.requestDecodable(MDBEndpoint.seriesDetail(id))
+            .flatMap{ item -> Observable<SeriesDetailResponse> in
+                return Observable.just(item.1)
+            }
+        
+    }
+    
+    func getSimilarMovieById(id: Int) -> Observable<MovieListResult> {
+        RxAlamofire.requestDecodable(MDBEndpoint.similarMovie(id))
+            .flatMap{ item -> Observable<MovieListResult> in
+                return Observable.just(item.1)
+            }
+    }
+    
+ 
+    
+    
+    func getMovieTrailerVideo(id: Int) -> Observable<MovieTrailerResponse> {
+        RxAlamofire.requestDecodable(MDBEndpoint.trailerVideo(id))
+            .flatMap{ item -> Observable<MovieTrailerResponse> in
+                return Observable.just(item.1)
+            }
+    }
+    
+    func getMovieDetailById(id: Int) -> Observable<MovieDetailResponse> {
+        RxAlamofire.requestDecodable(MDBEndpoint.movieDetails(id))
+            .flatMap{ item -> Observable<MovieDetailResponse> in
+                return Observable.just(item.1)
+            }
         
     }
     
@@ -59,9 +137,9 @@ class RxNetworkAgent : BaseNetworkAgent, RxNetworkAgentProtocol{
             }
     }
     
-    func getPopularPeople(page: Int) -> Observable<ActorInfoResponse> {
+    func getPopularPeople(page: Int) -> Observable<ActorListResponse> {
         RxAlamofire.requestDecodable(MDBEndpoint.popularPeople(page))
-            .flatMap { item -> Observable<ActorInfoResponse> in
+            .flatMap { item -> Observable<ActorListResponse> in
                 return Observable.just(item.1)
             }
     }
@@ -97,6 +175,78 @@ class RxNetworkAgent : BaseNetworkAgent, RxNetworkAgentProtocol{
 //            return Disposables.create()
 //        }
     }
+    
+    func getMovieCreditByid(id: Int) -> Observable<MovieCreditResponse> {
+//        return Observable.create { (observer) -> Disposable in
+//
+//            AF.request(MDBEndpoint.movieActors(id))
+//                .responseDecodable(of: MovieCreditResponse.self){ response in
+//                    switch response.result{
+//                    case .success(let data):
+//                        observer.onNext(data)
+//                        observer.onCompleted()
+//                    case .failure(let error):
+//                        observer.onError(error)
+//                }
+//            }
+//
+//            return Disposables.create()
+//        }
+        RxAlamofire.requestDecodable(MDBEndpoint.movieActors(id))
+            .flatMap{ item -> Observable<MovieCreditResponse> in
+                return Observable.just(item.1)
+            }
+    }
+    
+    func getActorDetailById(id: Int) -> Observable<ActorDetailResponse> {
+        
+        return Observable.create { (observer) -> Disposable in
+
+            AF.request(MDBEndpoint.actorDetail(id))
+                .responseDecodable(of: ActorDetailResponse.self){ response in
+                    switch response.result{
+                    case .success(let data):
+                        observer.onNext(data)
+                        observer.onCompleted()
+                    case .failure(let error):
+                        observer.onError(error)
+                }
+            }
+
+            return Disposables.create()
+            
+        }
+        
+//        RxAlamofire.requestDecodable(MDBEndpoint.actorDetail(id))
+//            .flatMap{ item -> Observable<ActorDetailResponse> in
+//                return Observable.just(item.1)
+//            }
+    }
+    
+    func getActorCombinedList(id: Int) -> Observable<ActorCombinedList> {
+//        RxAlamofire.requestDecodable(MDBEndpoint.actorTVCredits(id))
+//            .flatMap{ item -> Observable<ActorCombinedList> in
+//                return Observable.just(item.1)
+//            }
+        return Observable.create { (observer) -> Disposable in
+
+            AF.request(MDBEndpoint.actorTVCredits(id))
+                .responseDecodable(of: ActorCombinedList.self){ response in
+                    switch response.result{
+                    case .success(let data):
+                        observer.onNext(data)
+                        observer.onCompleted()
+                    case .failure(let error):
+                        observer.onError(error)
+                }
+            }
+
+            return Disposables.create()
+            
+        }
+                        
+    }
+    
     
    
     

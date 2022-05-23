@@ -10,6 +10,7 @@ import Alamofire
 
 protocol MovieDBNetworkAgentProtocol {
     
+    
     //MARK: - Movies
     func getMovieDetailById(id : Int, completion : @escaping (MDBResult<MovieDetailResponse>) -> Void)
     func getMovieTrailerVideo(id: Int, completion : @escaping (MDBResult<MovieTrailerResponse>) -> Void)
@@ -39,6 +40,8 @@ protocol MovieDBNetworkAgentProtocol {
 }
 
 struct MovieDBNetworkAgent : MovieDBNetworkAgentProtocol{
+   
+    
 
     static let shared = MovieDBNetworkAgent()
     
@@ -226,8 +229,6 @@ struct MovieDBNetworkAgent : MovieDBNetworkAgentProtocol{
             }
         }
     }
-    
-    
     
     func getPopularSeriesList(completion: @escaping (MDBResult<MovieListResult>) -> Void){
         AF.request(MDBEndpoint.popularTVSeries)

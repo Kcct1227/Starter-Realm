@@ -13,7 +13,6 @@ class MoreShowCaseViewController: UIViewController {
     
     var initData  : [MovieResult]?
     private let movieModel : MovieModel = MovieModelImpl.shared
-    private let networkAgent = MovieDBNetworkAgent.shared
     private var data : [MovieResult] = []
     private let numberOfItemsPerRow = 3
     private var totalPages : Int = 1
@@ -23,17 +22,15 @@ class MoreShowCaseViewController: UIViewController {
         super.viewDidLoad()
 
         initView()
-       // initState()
+        initState()
         fetchMoreShowCases(page: currentPage)
         
     }
 
     private func initState(){
         
-       // currentPage =  1
-       // totalPages =  1
         
-       // data.append(contentsOf: initData ?? [MovieResult]())
+        data.append(contentsOf: initData ?? [MovieResult]())
         moreshowcaseCollection.reloadData()
     }
     
@@ -53,15 +50,15 @@ class MoreShowCaseViewController: UIViewController {
     }
     
     func fetchMoreShowCases(page: Int){
-        networkAgent.getTopRatedMovieList(page: page){ [weak self](result) in
+        movieModel.getTopRatedMovieList(page: page){ [weak self](result) in
             guard let self = self else { return }
             switch result{
             case .success(let resultData):
-                self.data.append(contentsOf: resultData.results ?? [MovieResult]())
+                self.data.append(contentsOf: resultData )
+                self.totalPages = self.movieModel.totalTopRatedPage
                 //  UI update
-                self.currentPage =  resultData.page ?? 1
-                self.totalPages = resultData.totalPages ?? 1
                 self.moreshowcaseCollection.reloadData()
+              
             case .failure(let message):
                 print(message)
             }
@@ -97,9 +94,13 @@ extension MoreShowCaseViewController: UICollectionViewDataSource, UICollectionVi
     func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
         let isAtLastRow = indexPath.row == (data.count - 1)
         let haveMorePage = currentPage < totalPages //  9, 10 => page 10 => fetchData(page 10)
-        if isAtLastRow && haveMorePage{
+    
+
+        if isAtLastRow && haveMorePage {
             currentPage = currentPage + 1
             fetchMoreShowCases(page: currentPage)
+
+            
         }
     }
     
