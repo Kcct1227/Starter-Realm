@@ -9,6 +9,7 @@ import Foundation
 
 struct AppConstants{
     static let movieUserName = "Kcct"
+    
     static let moviePassword = "chelsea81026"
     static let requestToken = "bb66f178994df49be2b9e8fe37fb608122af8768"
     static let BASEURL = "https://api.themoviedb.org/3"
