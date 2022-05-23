@@ -18,18 +18,17 @@ struct ActorDetailResponse: Codable {
     let adult: Bool?
     let alsoKnownAs: [String]?
     let biography, birthday: String?
-    let deathday: JSONNull?
     let gender: Int?
     let homepage: String?
     let id: Int?
-    let imdbID, knownForDepartment, name, placeOfBirth: String?
+    var imdbID, knownForDepartment, name, placeOfBirth: String?
     let popularity: Double?
     let profilePath: String?
 
     enum CodingKeys: String, CodingKey {
         case adult
         case alsoKnownAs = "also_known_as"
-        case biography, birthday, deathday, gender, homepage, id
+        case biography, birthday, gender, homepage, id
         case imdbID = "imdb_id"
         case knownForDepartment = "known_for_department"
         case name
@@ -37,6 +36,7 @@ struct ActorDetailResponse: Codable {
         case popularity
         case profilePath = "profile_path"
     }
+    
     
     @discardableResult
     func toActorEntity(context: NSManagedObjectContext) -> ActorEntity{
@@ -52,6 +52,10 @@ struct ActorDetailResponse: Codable {
         entity.birthday = birthday
         entity.biography = biography
         return entity
+    }
+    
+    static func empty() -> ActorDetailResponse{
+        return ActorDetailResponse(adult: nil, alsoKnownAs: nil, biography: nil, birthday: nil, gender: nil, homepage: nil, id: nil, imdbID: nil, knownForDepartment: nil, name: nil, placeOfBirth: nil, popularity: nil, profilePath: nil)
     }
 }
 

@@ -7,10 +7,9 @@
 
 import Foundation
 import CoreData
-import CoreData
+import Alamofire
+import RxCocoa
 import RxSwift
-import RealmSwift
-import RxRealm
 
 protocol ContentTypeRepository {
     func save(name: String) -> BelongsToTypeEntity
@@ -21,73 +20,49 @@ protocol ContentTypeRepository {
     
     func getTopRatedTotalPages(type: MovieSerieGroupType, completion: @escaping (Int) -> Void)
     
-    func getBelongsToTypeObject(type : MovieSerieGroupType) -> BelongsToTypeObject
+    func testing()
+
 }
 
-class ContentTypeRespositoryImpl: BaseRepository, ContentTypeRepository {
+class ContentTypeRespositoryImpl: BaseRepository, ContentTypeRepository{
+    
     
     static let shared : ContentTypeRespositoryImpl = ContentTypeRespositoryImpl()
 
-    private var contentTypeMap = [String: BelongsToTypeObject]()
+    private var contentTypeMap = [String: BelongsToTypeEntity]()
     
     private var pageSize = 20
 
     
     private override init(){
         super.init()
-        //initializeData()
+        initializeData()
     }
     
-    
-    var notificationToken : NotificationToken?
-    
-    private func initializeData() {
-           
-           let dataSource = realmDB.objects(BelongsToTypeObject.self)
-           
-           if dataSource.isEmpty {
-               /// Insert initial data
-               MovieSerieGroupType.allCases.forEach {
-                   let _ : BelongsToTypeObject = save(name: $0.rawValue)
-               }
-           } else {
-               /// Map existing data
-               dataSource.forEach {
-                   contentTypeMap[$0.name ] = $0
-               }
-               
-             notificationToken =  dataSource.observe{ (changes) in
-                   switch changes {
-                   case .initial(let objects):
-                       print(objects.count)
-                   case .update(let objectes, let deletions, let insertions, let modifications) :
-                       print(objectes.count)
-                       print("Inserted Index : \(insertions.map { "\($0)" }.joined(separator: ","))")
-                       print("Deleted Index : \(deletions.map { "\($0)" }.joined(separator: ","))")
-                       print("Modified Index : \(modifications.map { "\($0)" }.joined(separator: ","))")
-                   case .error(let error) :
-                       print(error.localizedDescription)
-                   }
-            
-               
-                   
-               }
-               
-               
-           }
-    }
-    
-    func save(name: String) -> BelongsToTypeObject {
-            let object = BelongsToTypeObject()
-            object.name = name
-            
-            contentTypeMap[name] = object
-            
-            try! realmDB.write {
-                realmDB.add(object, update: .modified)
+    private func initializeData(){
+        // Process Existiing Data
+        
+        let fetchRequest : NSFetchRequest<BelongsToTypeEntity> = BelongsToTypeEntity.fetchRequest()
+        do{
+            let dataSource = try self.coreData.context.fetch(fetchRequest)
+            if dataSource.isEmpty{
+                // Insert Initial data
+                MovieSerieGroupType.allCases.forEach{
+                    let _ = save(name: $0.rawValue)
+                }
             }
-            return object
+            else{
+                // Map existing data
+                dataSource.forEach{
+                    if let key = $0.name{
+                        contentTypeMap[key] = $0
+                    }
+                }
+            }
+        }catch{
+            print(error)
         }
+    }
     
     func save(name: String) -> BelongsToTypeEntity {
         let entity = BelongsToTypeEntity(context: coreData.context)
@@ -96,213 +71,121 @@ class ContentTypeRespositoryImpl: BaseRepository, ContentTypeRepository {
         return entity
     }
     
+    func testing() {
+        DispatchQueue.global().async {
+            if let entity = self.contentTypeMap[MovieSerieGroupType.upcomingMovies.rawValue],
+               let movies = entity.movies,
+               let itemSet = movies as? Set<MovieEntity>{
+                 let data = Array( itemSet.sorted(by: { (first, second) -> Bool in
+                     let dataFormatter = DateFormatter()
+                     dataFormatter.dateFormat = "yyyy-MM-dd"
+                     let firstDate = dataFormatter.date(from: first.releaseDate ?? "") ?? Date()
+                     let secondDate = dataFormatter.date(from: second.releaseDate ?? "" ) ?? Date()
+                     return firstDate.compare(secondDate) == .orderedDescending
+                 })).map{ MovieEntity.toMovieResult(entity: $0)}
+                print("!!!!!!!!! \(data.count)")
+             }
+             
+            
+        }
+    }
+
     
-   
+    func getMoviesOrSeries(type: MovieSerieGroupType, completion: @escaping ([MovieResult]) -> Void) {
+        
+       if let entity = contentTypeMap[type.rawValue],
+          let movies = entity.movies,
+           let itemSet = movies as? Set<MovieEntity>{
+            completion( Array( itemSet.sorted(by: { (first, second) -> Bool in
+                let dataFormatter = DateFormatter()
+                dataFormatter.dateFormat = "yyyy-MM-dd"
+                let firstDate = dataFormatter.date(from: first.releaseDate ?? "") ?? Date()
+                let secondDate = dataFormatter.date(from: second.releaseDate ?? "" ) ?? Date()
+                return firstDate.compare(secondDate) == .orderedDescending
+            })).map{ MovieEntity.toMovieResult(entity: $0)})
+        }
+        else{
+            completion([MovieResult]())
+        }
+        
+    }
+    
+    func fetchBelongToRequest(type: MovieSerieGroupType) -> NSFetchRequest<BelongsToTypeEntity>{
+        let fetchRequest : NSFetchRequest<BelongsToTypeEntity> = BelongsToTypeEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "%K = %@", "name", type.rawValue)
+        return fetchRequest
+    }
     
     func getList(page: Int, type: MovieSerieGroupType, completion: @escaping ([MovieResult]) -> Void) {
-        
-        if let object = contentTypeMap[type.rawValue] {
-            let items = object.movies.sorted(by: { (first, second) -> Bool in
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateFormat = "yyyy-MM-dd"
-                let firstDate = dateFormatter.date(from: first.releaseDate ?? "") ?? Date()
-                let secondDate = dateFormatter.date(from: second.releaseDate ?? "") ?? Date()
-                
-                return firstDate.compare(secondDate) == .orderedDescending
-            }).map {
-                $0.toMovieResult()
-            }
-            completion(items)
-        } else {
+        let fetchRequest: NSFetchRequest<MovieEntity> = fetchResquestByBelongToType(type: type)
+        fetchRequest.fetchLimit = pageSize // 20
+        fetchRequest.fetchOffset = (pageSize * page) - pageSize // 20 - items 21 - 40
+        do{
+            let items = try coreData.context.fetch(fetchRequest)
+            completion(items.map { MovieEntity.toMovieResult(entity: $0) })
+        }catch {
+            print("\(#function) \(error.localizedDescription)")
             completion([MovieResult]())
         }
-        
-//        let items:[BelongToType] = realmDB.objects(BelongsToTypeObject.self)
-//            .filter(NSPredicate(format: "%K CONTAINS[cd] %@", "name", type.rawValue))
-//            .map{ $0.toBelongToType() }
-//        if let firstItem = items.first{
-//            completion(Array(firstItem.movies ?? [MovieResult]()).sorted(by: { (first, second) -> Bool in
-//                let dataFormatter = DateFormatter()
-//                dataFormatter.dateFormat = "yyyy-MM-dd"
-//                let firstDate = dataFormatter.date(from: first.releaseDate ?? "") ?? Date()
-//                let secondDate = dataFormatter.date(from: second.releaseDate ?? "" ) ?? Date()
-//                return firstDate.compare(secondDate) == .orderedAscending
-//            }))
-//        }
-//        else{
-//            completion([MovieResult]())
-//        }
-    }
-    
-    func getMoviesOrSeries(type : MovieSerieGroupType, completion: @escaping ([MovieResult]) -> Void) {
-        if let object = contentTypeMap[type.rawValue] {
-            let items = object.movies.sorted(by: { (first, second) -> Bool in
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateFormat = "yyyy-MM-dd"
-                let firstDate = dateFormatter.date(from: first.releaseDate ?? "") ?? Date()
-                let secondDate = dateFormatter.date(from: second.releaseDate ?? "") ?? Date()
-                
-                return firstDate.compare(secondDate) == .orderedDescending
-            }).map {
-                $0.toMovieResult()
-            }
-            completion(items)
-        } else {
-            completion([MovieResult]())
-        }
-    }
-    
-    func getMoviesOrSeries(type : MovieSerieGroupType) -> Observable<[MovieResult]> {
-        let items:[BelongsToTypeObject] = self.realmDB.objects(BelongsToTypeObject.self)
-            .filter(NSPredicate(format: "%K CONTAINS[cd] %@", "name", type.rawValue))
-            .map{ $0 }
-        if let firstItem = items.first{
-            return Observable.collection(from: firstItem.movies)
-                .flatMap { movies -> Observable<[MovieResult]> in
-                    return Observable.create { (observer) -> Disposable in
-                        let items : [MovieResult] = movies.sorted(by: self.sortMoviesByDate)
-                            .map { $0.toMovieResult() }
-                        observer.onNext(items)
-                        return Disposables.create()
-                    }
-            }
-        }
-        print("-------------- empty")
-        return Observable.empty()
-        
-        
-        /*
-         if let object : BelongsToTypeObject = self.contentTypeMap[type.rawValue] {
-             return Observable.collection(from: object.movies)
-                 .flatMap { movies -> Observable<[MovieResult]> in
-                     return Observable.create { (observer) -> Disposable in
-                         let items : [MovieResult] = movies.sorted(by: self.sortMoviesByDate)
-                             .map { $0.toMovieResult() }
-                         observer.onNext(items)
-                         return Disposables.create()
-                     }
-                 }
-         }
-         
-         return Observable.empty()
-         */
-        
-        
-        
-        
-//        return Observable.create { (observer) -> Disposable in
-//
-//            var notificationToken: NotificationToken?
-//
-//            if let object : BelongsToTypeObject = self.contentTypeMap[type.rawValue]{
-//                var movieObjects : [MovieResultObject] = [MovieResultObject]()
-//
-//                notificationToken = object.movies.observe({ (change) in
-//                    switch change{
-//                    case .initial(let objects):
-//                        movieObjects = objects.toArray()
-//                    case .update(let objects, _, _, _):
-//                        movieObjects = objects.toArray()
-//                    case .error(let error):
-//                        observer.onError(error)
-//                    }
-//
-//                    let resultItems = movieObjects.map{ $0.toMovieResult() }
-//                    observer.onNext(resultItems)
-//                })
-//            }
-//            else{
-//                observer.onError(MDBError.withMessage("Failed to get \(type.rawValue) from database"))
-//            }
-//            return Disposables.create(){
-//                notificationToken?.invalidate()
-//            }
-//
-//
-//        }
-        
 
     }
     
-    private func sortMoviesByDate(first: MovieResultObject, second: MovieResultObject) -> Bool {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        let firstDate = dateFormatter.date(from: first.releaseDate ?? "") ?? Date()
-        let secondDate = dateFormatter.date(from: second.releaseDate ?? "") ?? Date()
-        
-        return firstDate.compare(secondDate) == .orderedDescending
+    private func fetchResquestByBelongToType(type: MovieSerieGroupType) -> NSFetchRequest<MovieEntity>{
+        let fetchRequest: NSFetchRequest<MovieEntity> = MovieEntity.fetchRequest()
+        fetchRequest.sortDescriptors = [
+            NSSortDescriptor(key: "voteAverage", ascending: false),
+            NSSortDescriptor(key: "popularity", ascending: false),
+        ]
+        fetchRequest.predicate = NSPredicate(format: "belongsToType.name CONTAINS[cd] %@", type.rawValue)
+        return fetchRequest
     }
-    
-    func getBelongsToTypeObject(type : MovieSerieGroupType) -> BelongsToTypeObject {
-        if let object = contentTypeMap[type.rawValue] {
-            return object
-        }
-        
-        return save(name: type.rawValue)
-    }
-    
-    
-//    
-//    func getMoviesOrSeries1(type: MovieSerieGroupType) -> Observable<[MovieResult]> {
-//        return Observable.create{ (observer) -> Disposable in
-//            var notificationToken: NotificationToken?
-//            
-//            let items:[BelongsToTypeObject] = self.realmDB.objects(BelongsToTypeObject.self)
-//                .filter(NSPredicate(format: "%K CONTAINS[cd] %@", "name", type.rawValue))
-//                .map{ $0 }
-//            
-//            if let firstItem = items.first{
-//                //completion(firstItem.movies ?? [MovieResult]())
-//                var movieObjects : [MovieResultObject] = [MovieResultObject]()
-//        
-//                
-//                notificationToken = firstItem.movieList.observe({ (change) in
-//                    switch change {
-//                    case .initial(let objects):
-//                        movieObjects.removeAll()
-//                        movieObjects.append(contentsOf: objects)
-//                    case .update(let objects, _, _, _):
-//                        movieObjects.removeAll()
-//                        movieObjects.append(contentsOf: objects)
-//                    case .error(let error):
-//                        observer.onError(error)
-//                    }
-//                    
-//                    let resultItems = movieObjects
-//                        .map {
-//                            $0.toMovieResult()
-//                        }
-//                    observer.onNext(resultItems)
-//                    
-//                })
-//            }
-//            else{
-//                observer.onError(MDBError.withMessage("Failed to get \(type.rawValue) from database"))
-//            }
-//            
-//            return Disposables.create(){
-//                notificationToken?.invalidate()
-//            }
-//            
-//        }
-//    }
     
     func getTopRatedTotalPages(type: MovieSerieGroupType, completion: @escaping (Int) -> Void) {
- 
+                
+        let fetchRequest : NSFetchRequest<MovieEntity> = fetchResquestByBelongToType(type: type)
+        do{
+            let items = try coreData.context.fetch(fetchRequest)
+            completion(items.count / pageSize)
+        }catch {
+            print("\(#function) \(error.localizedDescription)")
+            completion(1)
+        }
     }
     
     func getBelongsToTypeEntity(type: MovieSerieGroupType) -> BelongsToTypeEntity {
-        return BelongsToTypeEntity()
+        let fetchRequest : NSFetchRequest<BelongsToTypeEntity> = fetchBelongToRequest(type: type)
+        do{
+            let results : [BelongsToTypeEntity] = try coreData.context.fetch(fetchRequest)
+            return results[0]
+        }catch{
+            print("\(#function) \(error.localizedDescription)")
+            return BelongsToTypeEntity()
+        }
     
     }
-        
     
-    
+   
 }
-    
-    
-   
-    
-    
-   
 
+/*
+ @discardableResult
+ func save(name: String) -> BelongsToTypeEntity {
+     let entity = BelongsToTypeEntity(context: coreData.context)
+     entity.name = name
+     contentTypeMap[name] = entity
+     coreData.saveContext()
+     return entity
+ }
+ 
+ func getMoviesOrSeries(type: MovieSerieGroupType, completion: @escaping ([MovieResult]) -> Void) {
+     
+ }
+ 
+ func getBelongsToTypeEntity(type: MovieSerieGroupType) -> BelongsToTypeEntity {
+     if let entity = contentTypeMap[type.rawValue]{
+         return entity
+     }
+     return save(name: type.rawValue)
+ 
+ }
+ */

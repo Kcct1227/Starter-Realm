@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import RealmSwift
+import CoreData
 
 protocol MovieRepository{
     func getDetail(id:Int, completion: @escaping (MovieDetailResponse?) -> Void )
@@ -16,363 +16,190 @@ protocol MovieRepository{
     func getSimilarContent(id:Int, completion: @escaping ([MovieResult]) -> Void )
     func saveCasts(id: Int, data: [MovieCast])
     func getCasts(id:Int, completion: @escaping ([MovieCast]) -> Void )
+    func getMovieFetchRequestById(_ id: Int) -> NSFetchRequest<MovieEntity>
+    func getCountry(id: Int) -> [ProductionCountry]
+    func getCompanies(id: Int) -> [ProductionCompany] 
+    
 }
 
 class MovieRespositoryImpl: BaseRepository, MovieRepository{
     
-    
     static let shared : MovieRepository = MovieRespositoryImpl()
-
     private let contentTypeRepo = ContentTypeRespositoryImpl.shared
     
     private override init() { }
     
-//    func saveList(type: MovieSerieGroupType, data: MovieListResult) {
-//        let object = BelongsToTypeObject()
-//        object.name = type.rawValue
-//
-//        let moives = List<MovieResultObject>()
-//        data.results?.forEach{
-//            moives.append(MovieResult.toMovieResultObject(movie: $0))
-//
-//        }
-//        object.movieList = moives
-//
-//        do{
-//            try realmDB.write {
-//                realmDB.add(object, update: .modified)
-//            }
-//        }catch{
-//            debugPrint(error.localizedDescription)
-//        }
-//    }
-    
-    func saveList(type: MovieSerieGroupType, data : MovieListResult) {
-        let objects = List<MovieResultObject>()
-        data.results?.map {
-            $0.toMovieObject(groupType: contentTypeRepo.getBelongsToTypeObject(type: type))
-        }.forEach {
-            objects.append($0)
+    func saveList(type: MovieSerieGroupType, data: MovieListResult) {
+        
+        coreData.context.perform {
+            data.results?.forEach{
+                $0.toMovieEntity(
+                    context: self.coreData.context,
+                    groupTye: self.contentTypeRepo.getBelongsToTypeEntity(type: type)
+                )
+                
+            }
+            self.coreData.saveContext()
         }
-        
-        
-        try! realmDB.write {
-            realmDB.add(objects, update: .modified)
-        }
-        
-        
-        
-        
     }
     
     
     func getDetail(id: Int, completion: @escaping (MovieDetailResponse?) -> Void) {
         
-
         
         
-        let items:[MovieDetailResponse] = realmDB.objects(MovieResultObject.self)
-            .filter("id == %@", id)
-            .map{ $0.toMovieDetail() }
-        
-        completion(items.first)
-
+        coreData.context.perform {
+            let fetcthRequest: NSFetchRequest<MovieEntity> = self.getMovieFetchRequestById(id)
+            
+            if let items = try?  self.coreData.context.fetch(fetcthRequest),
+               let firstItem = items.first{
+                completion(MovieEntity.toMovieDetailResponse(entity: firstItem, companyList: self.getCompanies(id: id), countryList:  self.getCountry(id: id)))
+            }else{
+                completion(nil)
+            }
+        }
     }
     
     func getCompanies(id: Int) -> [ProductionCompany] {
-        return [ProductionCompany]()
+        let fetchRequest : NSFetchRequest<MovieEntity> = getMovieFetchRequestById(id)
+        if let items = try? coreData.context.fetch(fetchRequest),
+           let firstItem = items.first{
+            return (firstItem.productionCompanies as? Set<ProductionCompanyEntity>)?.map{
+                ProductionCompanyEntity.toProductionCompay(entity: $0)
+            } ?? [ProductionCompany]()
+        }
+        else{
+            return [ProductionCompany]()
+        }
     }
     
     func getCountry(id: Int) -> [ProductionCountry] {
-        
-        return [ProductionCountry]()
+        let fetchRequest : NSFetchRequest<MovieEntity> = getMovieFetchRequestById(id)
+        if let items = try? coreData.context.fetch(fetchRequest),
+           let firstItem = items.first{
+            return (firstItem.productionCountry as? Set<ProductionCountryEntity>)?.map{
+                ProductionCountryEntity.toProductionCountry(entity: $0)
+            } ?? [ProductionCountry]()
+        }
+        else{
+            return [ProductionCountry]()
+        }
     }
     
     func saveDetail(data: MovieDetailResponse) {
-        guard let object  = realmDB.object(ofType: MovieResultObject.self, forPrimaryKey: data.id) else{
-            debugPrint("Couldnt find object to delete")
-            return
-        }
-        
-        if let cmpList = data.productionCompanies {
-           saveCompanies(id: data.id ?? 0, data: cmpList)
-        }
-    
-        if let ctList = data.productionCountries {
-            saveCountry(id: data.id ?? 0, data: ctList)
-        }
+        coreData.context.perform {
 
-        if let gList = data.genres {
-            saveGenreList(id: data.id ?? 0, data: gList)
-        }
-        
-        do{
-            try realmDB.write {
-                        
-                object.budget = data.budget
-                object.homepage = data.homepage
-                object.status = data.status
-                object.imdbID = data.imdbID
-                object.tagline = data.tagline
-                object.revenue = data.revenue
-                object.runtime = data.runtime
-                
-                    
-                realmDB.add(object, update: .modified)
-            }
-        }catch{
-            debugPrint(error.localizedDescription)
+            let _ = data.toMovieEntity(context: self.coreData.context)
+            self.saveCompanies(id: data.id ?? 0, data: data.productionCompanies ?? [ProductionCompany]())
+            
+            self.saveCountry(id: data.id ?? 0, data: data.productionCountries ?? [ProductionCountry]())
+            self.coreData.saveContext()
         }
         
     }
     
     func saveSimilarContent(id: Int, data: [MovieResult]) {
-        let similarList = List<MovieResultObject>()
-        guard let object  = realmDB.object(ofType: MovieResultObject.self, forPrimaryKey: id) else{
-            debugPrint("Couldnt find object to delete")
-            return
-        }
-        
-        data.forEach{ movie in
-            guard let movieObject  = realmDB.object(ofType: MovieResultObject.self, forPrimaryKey: movie.id) else{
-                debugPrint("Couldnt find object to delete")
-                similarList.append(MovieResult.toMovieResultObject(movie: movie))
-                return
-                
+        let fetchRequest : NSFetchRequest<MovieEntity> = getMovieFetchRequestById(id)
+        if let items = try? coreData.context.fetch(fetchRequest),
+           let firstItem = items.first{
+            data.map{
+                $0.toMovieEntity(
+                    context: coreData.context,
+                    groupTye: contentTypeRepo.getBelongsToTypeEntity(type: .actorCredits))
+            }.forEach{
+                firstItem.addToSimilarMovies($0)
             }
-            
-            do{
-                try realmDB.write{
-                    movieObject.adult = movie.adult
-                    movieObject.backdropPath = movie.backdropPath
-                    movieObject.genreIDS = movie.genreIDS?.map { String($0)}.joined(separator: ",")
-                    movieObject.runtime = movie.runtime
-                    movieObject.originalLanguage = movie.originalLanguage
-                    movieObject.originalTitle = movie.originalTitle
-                    movieObject.originalName = movie.originalName
-                    movieObject.overview = movie.overview
-                    movieObject.popularity = movie.popularity
-                    movieObject.posterPath = movie.posterPath
-                    movieObject.releaseDate = movie.releaseDate
-                    movieObject.firstAirDate  = movie.firstAirDate
-                    movieObject.title = movie.title
-                    movieObject.video = movie.video
-                    movieObject.voteAverage = movie.voteAverage
-                    movieObject.voteCount = movie.voteCount
-                    
-                    similarList.append(movieObject)
-                }
-            }catch{
-                debugPrint(error.localizedDescription)
-            }
+            coreData.saveContext()
         }
-        do{
-            try realmDB.write {
-                
-                
-                if similarList.count > 0{
-                    object.similarContents = similarList
-                    
-                }
-                realmDB.add(object, update: .modified)
-            }
-        }catch{
-            debugPrint(error.localizedDescription)
-        }
-      
-        
         
     }
     
    
     
     func getSimilarContent(id: Int, completion: @escaping ([MovieResult]) -> Void) {
-        let items:[MovieListResult] = realmDB.objects(MovieResultObject.self)
-            .filter("id == %@", id)
-            .map{ $0.toSimilarContent() }
-
-        completion(items.first?.results ?? [MovieResult]())
+        let fetchRequest : NSFetchRequest<MovieEntity> = getMovieFetchRequestById(id)
+        if let items = try? coreData.context.fetch(fetchRequest),
+           let firstItem = items.first{
+            completion(
+                (firstItem.similarMovies as? Set<MovieEntity>)?.map{
+                    MovieEntity.toMovieResult(entity: $0)
+                } ?? [MovieResult]()
+            )
+        }
     }
     
-    func saveGenreList(id: Int, data: [MovieGenre]) {
-        let glist = List<MovieGenreObject>()
-        guard let genreObject  = realmDB.object(ofType: MovieResultObject.self, forPrimaryKey: id) else{
-            debugPrint("Couldnt find object to delete")
-            return
-        }
-        
-        data.forEach{ item in
-            guard let object  = realmDB.object(ofType: MovieGenreObject.self, forPrimaryKey: item.id) else{
-                debugPrint("Couldnt find object to delete")
-                let newObject = MovieGenreObject()
-                newObject.id = item.id
-                newObject.name = item.name
-                glist.append(newObject)
-                return
-                
-            }
-            
-            do{
-                try realmDB.write{
-                    
-                    //object.id = item.id
-                    object.name = item.name
-                    glist.append(object)
-                }
-            }catch{
-                debugPrint(error.localizedDescription)
-            }
-        }
-        do{
-            try realmDB.write {
-                
-                if glist.count > 0{
-                    genreObject.genres = glist
-                }
-                realmDB.add(genreObject, update: .modified)
-            }
-        }catch{
-            debugPrint(error.localizedDescription)
-        }
-      
-        
-    }
     
     func saveCompanies(id: Int, data: [ProductionCompany]) {
-        let companyList = List<ProductionCompanyObject>()
-        guard let movieObject  = realmDB.object(ofType: MovieResultObject.self, forPrimaryKey: id) else{
-            debugPrint("Couldnt find object to delete")
-            return
-        }
-        
-        data.forEach{ item in
-            guard let object  = realmDB.object(ofType: ProductionCompanyObject.self, forPrimaryKey: item.id) else{
-                debugPrint("Couldnt find object to delete")
-                companyList.append(ProductionCompany.toProductionCompanyObject(data: item))
-                return
-                
+        let fetchRequest : NSFetchRequest<MovieEntity> = getMovieFetchRequestById(id)
+        if let items = try? coreData.context.fetch(fetchRequest),
+           let firstItem = items.first{
+            data.map{
+                $0.toMovieProductonCompany(conext: coreData.context)
+            }.forEach{
+                firstItem.addToProductionCompanies($0)
             }
-            
-            do{
-                try realmDB.write{
-                    
-                    //object.id = item.id
-                    object.logoPath = item.logoPath
-                    object.name = "Testing Testing"
-                    object.originCountry = item.originCountry
-                    companyList.append(object)
-                }
-            }catch{
-                debugPrint(error.localizedDescription)
-            }
+            coreData.saveContext()
         }
-        do{
-            try realmDB.write {
-                
-                if companyList.count > 0{
-                    movieObject.productionCompanies = companyList
-                }
-                realmDB.add(movieObject, update: .modified)
-            }
-        }catch{
-            debugPrint(error.localizedDescription)
-        }
-      
         
     }
     
     func saveCountry(id: Int, data: [ProductionCountry]) {
-        let countryList = List<ProductionCountryObject>()
-        guard let movieObject  = realmDB.object(ofType: MovieResultObject.self, forPrimaryKey: id) else{
-            debugPrint("Couldnt find object to delete")
-            return
-        }
-        
-        data.forEach{ item in
-            guard let object  = realmDB.object(ofType: ProductionCountryObject.self, forPrimaryKey: item.iso3166_1) else{
-                debugPrint("Couldnt find object to delete")
-                countryList.append(ProductionCountry.toProductionCountryObject(data: item))
-                return
-                
+        let fetchRequest : NSFetchRequest<MovieEntity> = getMovieFetchRequestById(id)
+        if let items = try? coreData.context.fetch(fetchRequest),
+           let firstItem = items.first{
+            data.map{
+                $0.toMovieProductionCountry(context: coreData.context)
+            }.forEach{
+                firstItem.addToProductionCountry($0)
             }
-            
-            do{
-                try realmDB.write{
-                    object.name = item.name
-                    countryList.append(object)
-                }
-            }catch{
-                debugPrint(error.localizedDescription)
-            }
-        }
-        do{
-            try realmDB.write {
-                
-                if countryList.count > 0{
-                    movieObject.productionCountries = countryList
-                }
-                realmDB.add(movieObject, update: .modified)
-            }
-        }catch{
-            debugPrint(error.localizedDescription)
+            coreData.saveContext()
         }
         
     }
     
     func getCasts(id: Int, completion: @escaping ([MovieCast]) -> Void) {
-        let items: [MovieResultObject] = realmDB.objects(MovieResultObject.self)
-            .filter("id == %@", id)
-            .map{ $0 }
-        if let data = items.first{
-            let creditCastResponse: MovieCreditResponse = data.toMovieCreditResponse()
-            completion(creditCastResponse.cast ?? [MovieCast]())
-        }
-    }
-    
-    
-    
-    func saveCasts(id: Int, data: [MovieCast]) {
-        let actorList = List<ActorInfoResponseObject>()
-        guard let movieObject  = realmDB.object(ofType: MovieResultObject.self, forPrimaryKey: id) else{
-            debugPrint("Couldnt find object to delete")
-            return
+        let fetchRequest : NSFetchRequest<MovieEntity> = getMovieFetchRequestById(id)
+        if let items = try? coreData.context.fetch(fetchRequest),
+           let firstItem = items.first,
+           let actorEntites = (firstItem.casts as? Set<ActorEntity>){
+            completion(
+                actorEntites.map{
+                    
+                    ActorEntity.toMovieCast(entity: $0)
+                }
+            )
         }
         
-        data.forEach{ item in
-            let actor = item.convertToActorInfoResponse()
-            guard let actorObject  = realmDB.object(ofType: ActorInfoResponseObject.self, forPrimaryKey: actor.id ) else{
-                debugPrint("Couldnt find object to delete")
-                actorList.append(ActorInfoResponse.toActorDetailResponseObject(data: actor))
-                return
-                
+    }
+    
+    func saveCasts(id: Int, data: [MovieCast]) {
+        let fetchRequest : NSFetchRequest<MovieEntity> = getMovieFetchRequestById(id)
+        if let items = try? coreData.context.fetch(fetchRequest),
+           let firstItem = items.first{
+            data.map{
+                $0.convertToActorInfoResponse()
+            }.map {
+                $0.toActorEntity(context: coreData.context)
+            }.forEach{
+                firstItem.addToCasts($0)
             }
-            
-            do{
-                try realmDB.write{
-                    actorObject.adult = actor.adult
-                    actorObject.profilePath = actor.profilePath
-                    actorObject.knownForDepartment =  "Acting"
-                    actorObject.popularity = actor.popularity
-                    actorObject.gender  = actor.gender
-                    actorObject.name = actor.name
-                    actorList.append(actorObject)
-                }
-            }catch{
-                debugPrint(error.localizedDescription)
-            }
-        }
-        do{
-            try realmDB.write {
-                
-                if actorList.count > 0{
-                    movieObject.actors = actorList
-                }
-                realmDB.add(movieObject, update: .modified)
-            }
-        }catch{
-            debugPrint(error.localizedDescription)
+        
+            coreData.saveContext()
         }
     }
     
-
+  
+    
+     func getMovieFetchRequestById(_ id: Int) -> NSFetchRequest<MovieEntity>{
+        let fetchRequest: NSFetchRequest<MovieEntity> = MovieEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "%K = %@", "id", "\(id)")
+        fetchRequest.sortDescriptors = [
+            NSSortDescriptor(key: "popularity", ascending: false)
+        ]
+        return fetchRequest
+         
+         
+         
+    }
+    
 }

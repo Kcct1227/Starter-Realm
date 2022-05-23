@@ -47,7 +47,6 @@ extension ActorEntity{
             alsoKnownAs: [String](),
             biography: entity.biography,
             birthday: entity.birthday,
-            deathday: nil,
             gender: Int(entity.gender),
             homepage: entity.homepage,
             id: Int(entity.id),

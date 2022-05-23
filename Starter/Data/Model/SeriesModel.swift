@@ -8,7 +8,7 @@
 import Foundation
 
 protocol SeriesModel{
-    func getSimilarSeriesById(id: Int, completion : @escaping (MDBResult<[MovieResult]>) -> Void)
+    func getSimilarSeriesById(id: Int, completion : @escaping (MDBResult<MovieListResult>) -> Void)
     func getPopularSeriesList(completion: @escaping (MDBResult<[MovieResult]>) -> Void)
     func getSeriesDetailById(id : Int, completion : @escaping (MDBResult<SeriesDetailResponse>) -> Void)
     func getSeriesCreditByid(id: Int, completion : @escaping (MDBResult<MovieCreditResponse>) -> Void)
@@ -24,7 +24,7 @@ class SeriesModelImpl : BaseModel, SeriesModel{
     
     private override init() {}
         
-    func getSimilarSeriesById(id: Int, completion : @escaping (MDBResult<[MovieResult]>) -> Void){
+    func getSimilarSeriesById(id: Int, completion : @escaping (MDBResult<MovieListResult>) -> Void){
         //networkAgent.getSimilarSeriesById(id: id, completion: completion)
         networkAgent.getSimilarSeriesById(id: id){ (result) in
             switch result {
@@ -35,7 +35,7 @@ class SeriesModelImpl : BaseModel, SeriesModel{
             }
             
             self.movieRespository.getSimilarContent(id: id){
-                completion(.success($0))
+                completion(.success(MovieListResult(dates: nil, page: 1, results: $0, totalPages: 1, totalResults: $0.count)))
             }
         }
             

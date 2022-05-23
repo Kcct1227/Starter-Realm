@@ -58,6 +58,10 @@ struct LoginRequest: Codable{
 
 public struct MovieGenreList: Codable{
     let genres : [MovieGenre]
+    
+    static func empty()-> MovieGenreList{
+        return MovieGenreList(genres: [MovieGenre]())
+    }
 }
 
 public struct MovieGenre : Codable{
@@ -79,6 +83,7 @@ public struct MovieGenre : Codable{
         
         return vo
     }
+    
 }
 
 var movieGenres = [MovieGenre]()
@@ -95,9 +100,8 @@ public struct ActorCombinedList: Codable {
         self.id = id
     }
     
-}
-
-struct BelongToType: Codable{
-    let name: String?
-    let movies: [MovieResult]?
+    static func empty() -> ActorCombinedList{
+        return ActorCombinedList(cast: nil, crew: nil, id: nil)
+    }
+    
 }

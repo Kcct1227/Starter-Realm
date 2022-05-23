@@ -18,14 +18,15 @@ protocol MovieModel{
     func getMovieCreditByid(id: Int, completion : @escaping (MDBResult<MovieCreditResponse>) -> Void)
     func getSimilarMovieById(id: Int, completion : @escaping (MDBResult<[MovieResult]>) -> Void)
     func getTopRatedMovieList(page: Int, completion: @escaping (MDBResult<[MovieResult]>) -> Void)
-    func getGenreList(completion : @escaping (MDBResult<MovieGenreList>) -> Void)
+    func getGenreList(completion : @escaping (MDBResult<[MovieGenre]>) -> Void)
     func getPopularMovieList(page: Int, completion: @escaping (MDBResult<[MovieResult]>) -> Void)
-   
+    func testing()
+    
+    func getUpComingMovieList() -> Observable<[MovieResult]>
 }
 
 class MovieModelImpl: BaseModel, MovieModel {
     var totalTopRatedPage: Int = 1
-    let disposeBag =  DisposeBag()
 
     static let shared = MovieModelImpl()
     private let genreRepository : GenreRepository = GenreRepositoryImpl.shared
@@ -33,6 +34,10 @@ class MovieModelImpl: BaseModel, MovieModel {
     private let contentTypeRepository : ContentTypeRepository = ContentTypeRespositoryImpl.shared
     
     private override init() {}
+    
+    func testing(){
+        contentTypeRepository.testing()
+    }
     
     
     func getMovieDetailById(id : Int, completion : @escaping (MDBResult<MovieDetailResponse>) -> Void){
@@ -95,12 +100,10 @@ class MovieModelImpl: BaseModel, MovieModel {
     }
     
     func getTopRatedMovieList(page: Int,  completion: @escaping (MDBResult<[MovieResult]>) -> Void){
-       // var networkResult = [MovieResult]()
         let contentType : MovieSerieGroupType = .topRatedMovies
         networkAgent.getTopRatedMovieList(page: page){ (result) in
             switch result {
             case .success(let data) :
-                //networkResult = data.results ?? [MovieResult]()
                 self.movieRespository.saveList(type: contentType, data: data)
                 self.totalTopRatedPage = data.totalPages ?? 1
 
@@ -111,27 +114,51 @@ class MovieModelImpl: BaseModel, MovieModel {
             self.contentTypeRepository.getMoviesOrSeries( type: contentType){
                 completion(.success($0))
             }
+        
+            
+        }
+    }
+    
+    func getUpComingMovieList() -> Observable<[MovieResult]> {
+        let contentType : MovieSerieGroupType = .upcomingMovies
+
+        return RxNetworkAgent.shared.getUpcomingMovieList()
+                .do(onNext: { data in
+                    self.movieRespository.saveList(type: contentType, data: data)
+                })
+                    //.catchAndReturn([MovieResult]())
+                    .flatMap{ _ ->  Observable<[MovieResult]> in
+                        return Observable.create{ (observer) -> Disposable in
+                            self.contentTypeRepository.getMoviesOrSeries(type: contentType){
+                                observer.onNext($0)
+                                observer.onCompleted()
+                            }
+                return Disposables.create()
+            }
         }
     }
     
     func getUpComingMovieList(completion: @escaping (MDBResult<[MovieResult]>) -> Void){
         let contentType : MovieSerieGroupType = .upcomingMovies
-        //var networkResult = [MovieResult]()
         networkAgent.getUpComingMovieList(){ (result) in
             switch result {
             case .success(let data) :
-                //networkResult = data.results ?? [MovieResult]()
                 self.movieRespository.saveList(type: contentType, data: data)
             case .failure(let error):
                 print("\(#function) \(error)")
             }
+            
+            
             self.contentTypeRepository.getMoviesOrSeries(type: contentType){
                 completion(.success($0))
             }
+            
+            //self.contentTypeRepository.testing()
+
         }
     }
     
-    func getGenreList(completion : @escaping (MDBResult<MovieGenreList>) -> Void){
+    func getGenreList(completion : @escaping (MDBResult<[MovieGenre]>) -> Void){
         // [1] - fetch from Network
         networkAgent.getGenreList{ (result) in
             switch result{
@@ -145,7 +172,7 @@ class MovieModelImpl: BaseModel, MovieModel {
             }
             
             // [3] - Fetch inserted data from Database
-            self.genreRepository.get{ completion(.success($0))}
+            self.genreRepository.get{ completion(.success($0.genres))}
             
         }
     }
@@ -165,58 +192,4 @@ class MovieModelImpl: BaseModel, MovieModel {
             }
         }
     }
-    
-    func getPopularMovieList(page:Int)-> Observable<[MovieResult]>{
-        
-        /*
-         Show from database first
-         Make network request
-         - Succes - Update Database -> Nofity/ Push -> Update UI
-         - Fail - xxx
-         */
-        
-        let contentType : MovieSerieGroupType = .popularMovies
-        let observableRemoteMovieList = RxNetworkAgent.shared.getPopularMovieList(page: page)
-        observableRemoteMovieList
-            .subscribe(onNext: { data in
-                self.movieRespository.saveList(type: contentType, data: data)
-            })
-            .disposed(by: disposeBag)
-        
-        
-        
-        let observableLocalMovieList = ContentTypeRespositoryImpl.shared.getMoviesOrSeries(type: contentType)
-        return observableLocalMovieList
-        
-//        return RxNetworkAgent.shared.getPopularMovieList(page: page)
-//            .do(onNext: { data in
-//                self.movieRespository.saveList(type: contentType, data: data)
-//            })
-//                .catchAndReturn(MovieListResult.empty())
-//                .flatMap{ _ ->  Observable<MovieListResult> in
-//                    return Observable.create{ (observer) -> Disposable in
-//                        self.contentTypeRepository.getMoviesOrSeries(type: contentType){
-//                            observer.onNext(MovieListResult(dates: nil, page: 1, results: $0, totalPages: 1, totalResults: $0.count))
-//                            observer.onCompleted()
-//                        }
-//                    return Disposables.create()
-//            }
-//        }
-    }
-    
-    /*
-     return Observable<MovieListResult>.create{ (observer) -> Disposable in
-         
-         RxNetworkAgent.shared.getPopularMovieList(page: page)
-             .subscribe { data  in
-                 observer.onNext(MovieListResult(dates: nil, page: 1, results: data.results, totalPages: 1, totalResults: data.results?.count))
-             } onError: { error  in
-                 observer.onError(error)
-             }
-
-         
-         return Disposables.create()
-         
-     }
-     */
 }

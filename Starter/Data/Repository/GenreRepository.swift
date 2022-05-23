@@ -7,13 +7,10 @@
 
 import Foundation
 import CoreData
-import RxSwift
-import RxCocoa
 
 protocol GenreRepository{
     func get(completion: @escaping (MovieGenreList) -> Void )
     func save(data: MovieGenreList)
-    func get() -> Observable<[MovieGenre]> 
 }
 
 class GenreRepositoryImpl : BaseRepository, GenreRepository{
@@ -23,47 +20,31 @@ class GenreRepositoryImpl : BaseRepository, GenreRepository{
     private override init(){}
     
     func get(completion: @escaping (MovieGenreList) -> Void) {
+        let fetchRequest : NSFetchRequest<GenreEntity> = GenreEntity.fetchRequest()
+        fetchRequest.sortDescriptors = [
+            NSSortDescriptor(key: "name", ascending: true)
+        ]
         
-        
-        let items:[MovieGenre] = realmDB.objects(MovieGenreObject.self)
-            .map{ $0.toMovieGenre() }
-            .sorted(by:({ (first, second) -> Bool in
-                return first.name.caseInsensitiveCompare(second.name) == .orderedAscending
-            }))
-
-        completion(MovieGenreList(genres: items))
-    }
-    
-    func get() -> Observable<[MovieGenre]> {
-        let realmObject = realmDB.objects(MovieGenreObject.self)
-            .sorted(byKeyPath: "name", ascending: true)
-        
-        let observable = Observable.collection(from: realmObject)
-            .flatMap { (results) -> Observable<[MovieGenreObject]> in
-                .just(results.toArray())
+        do{
+            let results : [GenreEntity] = try coreData.context.fetch(fetchRequest)
+            let items = results.map {
+                GenreEntity.toMovieGenre(entity: $0)
             }
-            .flatMap { (objects) -> Observable<[MovieGenre]> in
-                .just(objects.map { $0.toMovieGenre() })
-            }
-        
-        return observable
+            
+            completion(MovieGenreList(genres: items))
+        }catch{
+            completion(MovieGenreList(genres: [MovieGenre]()))
+            print("\(#function) \(error.localizedDescription)")
+        }
     }
-    
     
     func save(data: MovieGenreList) {
         let _ = data.genres.map{
-            let object = MovieGenreObject()
-            object.name = $0.name
-            object.id = $0.id
-            
-            do{
-                try realmDB.write{
-                    realmDB.add(object, update: .modified)
-                }
-            }catch{
-                debugPrint(error.localizedDescription)
-
-            }
+            let entity = GenreEntity(context: coreData.context)
+            entity.id = String($0.id)
+            entity.name = $0.name
+            return
         }
+        coreData.saveContext()
     }
 }

@@ -122,6 +122,15 @@
             </uniquenessConstraint>
         </uniquenessConstraints>
     </entity>
+    <entity name="WatchListEntity" representedClassName="WatchListEntity" syncable="YES" codeGenerationType="class">
+        <attribute name="insertedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="movieId" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <uniquenessConstraints>
+            <uniquenessConstraint>
+                <constraint value="movieId"/>
+            </uniquenessConstraint>
+        </uniquenessConstraints>
+    </entity>
     <elements>
         <element name="ActorEntity" positionX="-514.1627807617188" positionY="-72.25431823730469" width="128" height="253"/>
         <element name="BelongsToCollectionEntity" positionX="-51.95635986328125" positionY="-74.25497436523438" width="128" height="118"/>
@@ -131,5 +140,6 @@
         <element name="ProductionCompanyEntity" positionX="165.62255859375" positionY="-32.21966552734375" width="128" height="118"/>
         <element name="ProductionCountryEntity" positionX="206.5587158203125" positionY="123.6719970703125" width="128" height="88"/>
         <element name="SpokenLanguageEntity" positionX="-40.3687744140625" positionY="160.7786254882812" width="128" height="103"/>
+        <element name="WatchListEntity" positionX="-306" positionY="-144" width="128" height="59"/>
     </elements>
 </model>
