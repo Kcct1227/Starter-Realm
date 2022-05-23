@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="19529" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES">
+    <device id="retina6_1" orientation="portrait" appearance="light"/>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="19519"/>
+        <capability name="Named colors" minToolsVersion="9.0"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <objects>
+        <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner"/>
+        <placeholder placeholderIdentifier="IBFirstResponder" id="-2" customClass="UIResponder"/>
+        <collectionViewCell opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" id="gTV-IL-0wX" customClass="PopularFilmCollectionViewCell" customModule="Starter" customModuleProvider="target">
+            <rect key="frame" x="0.0" y="0.0" width="179" height="250"/>
+            <autoresizingMask key="autoresizingMask"/>
+            <view key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center">
+                <rect key="frame" x="0.0" y="0.0" width="179" height="250"/>
+                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                <subviews>
+                    <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="PVh-7q-7bx">
+                        <rect key="frame" x="0.0" y="0.0" width="179" height="250"/>
+                        <subviews>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="image_movie" translatesAutoresizingMaskIntoConstraints="NO" id="SNM-aZ-Z52">
+                                <rect key="frame" x="0.0" y="0.0" width="179" height="175"/>
+                            </imageView>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Fantastic Beasts" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="m3L-Ji-D0R">
+                                <rect key="frame" x="0.0" y="191" width="179" height="27.5"/>
+                                <fontDescription key="fontDescription" name="GeezaPro" family="Geeza Pro" pointSize="14"/>
+                                <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="8.2" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="HhT-cX-aAv">
+                                <rect key="frame" x="0.0" y="224.5" width="20" height="17.5"/>
+                                <fontDescription key="fontDescription" name="GeezaPro-Bold" family="Geeza Pro" pointSize="14"/>
+                                <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                            <stackView opaque="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="ngb-Ti-u0L" customClass="RatingControl" customModule="Starter" customModuleProvider="target">
+                                <rect key="frame" x="28" y="226.5" width="70" height="14"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="70" id="q7S-RJ-SYy"/>
+                                </constraints>
+                                <userDefinedRuntimeAttributes>
+                                    <userDefinedRuntimeAttribute type="size" keyPath="starSize">
+                                        <size key="value" width="14" height="14"/>
+                                    </userDefinedRuntimeAttribute>
+                                    <userDefinedRuntimeAttribute type="number" keyPath="starCount">
+                                        <integer key="value" value="5"/>
+                                    </userDefinedRuntimeAttribute>
+                                    <userDefinedRuntimeAttribute type="number" keyPath="rating">
+                                        <integer key="value" value="4"/>
+                                    </userDefinedRuntimeAttribute>
+                                </userDefinedRuntimeAttributes>
+                            </stackView>
+                        </subviews>
+                        <color key="backgroundColor" name="color_primary"/>
+                        <constraints>
+                            <constraint firstItem="ngb-Ti-u0L" firstAttribute="centerY" secondItem="HhT-cX-aAv" secondAttribute="centerY" id="8YF-z0-yeD"/>
+                            <constraint firstItem="HhT-cX-aAv" firstAttribute="leading" secondItem="PVh-7q-7bx" secondAttribute="leading" id="Cl3-ej-ZQL"/>
+                            <constraint firstItem="SNM-aZ-Z52" firstAttribute="top" secondItem="PVh-7q-7bx" secondAttribute="top" id="FGK-rr-aDQ"/>
+                            <constraint firstAttribute="trailing" secondItem="m3L-Ji-D0R" secondAttribute="trailing" id="Lsg-Kv-bf1"/>
+                            <constraint firstAttribute="trailing" secondItem="SNM-aZ-Z52" secondAttribute="trailing" id="OMS-y7-3dn"/>
+                            <constraint firstAttribute="bottom" secondItem="HhT-cX-aAv" secondAttribute="bottom" constant="8" id="Rld-KZ-cRh"/>
+                            <constraint firstItem="m3L-Ji-D0R" firstAttribute="top" secondItem="SNM-aZ-Z52" secondAttribute="bottom" constant="16" id="SiU-Va-1Om"/>
+                            <constraint firstItem="SNM-aZ-Z52" firstAttribute="height" secondItem="PVh-7q-7bx" secondAttribute="height" multiplier="0.7" id="Vmx-gZ-mWT"/>
+                            <constraint firstItem="m3L-Ji-D0R" firstAttribute="leading" secondItem="PVh-7q-7bx" secondAttribute="leading" id="W05-Ne-6zN"/>
+                            <constraint firstItem="ngb-Ti-u0L" firstAttribute="leading" secondItem="HhT-cX-aAv" secondAttribute="trailing" constant="8" id="iUZ-Jc-zOh"/>
+                            <constraint firstItem="SNM-aZ-Z52" firstAttribute="leading" secondItem="PVh-7q-7bx" secondAttribute="leading" id="jM9-Sn-9NT"/>
+                            <constraint firstItem="ngb-Ti-u0L" firstAttribute="top" secondItem="m3L-Ji-D0R" secondAttribute="bottom" constant="8" id="npP-ae-u0b"/>
+                        </constraints>
+                    </view>
+                </subviews>
+            </view>
+            <viewLayoutGuide key="safeArea" id="ZTg-uK-7eu"/>
+            <constraints>
+                <constraint firstAttribute="trailing" secondItem="PVh-7q-7bx" secondAttribute="trailing" id="Fvn-QO-bYY"/>
+                <constraint firstAttribute="bottom" secondItem="PVh-7q-7bx" secondAttribute="bottom" id="KG0-4L-PvQ"/>
+                <constraint firstItem="PVh-7q-7bx" firstAttribute="leading" secondItem="gTV-IL-0wX" secondAttribute="leading" id="keN-xk-9rg"/>
+                <constraint firstItem="PVh-7q-7bx" firstAttribute="top" secondItem="gTV-IL-0wX" secondAttribute="top" id="nzH-if-lrB"/>
+            </constraints>
+            <size key="customSize" width="179" height="209.5"/>
+            <connections>
+                <outlet property="imageViewBackDrop" destination="SNM-aZ-Z52" id="VUc-v0-nQE"/>
+                <outlet property="labelContentTitle" destination="m3L-Ji-D0R" id="z7V-Xb-Hm3"/>
+                <outlet property="labelRating" destination="HhT-cX-aAv" id="p1d-eJ-9DI"/>
+                <outlet property="ratingStar" destination="ngb-Ti-u0L" id="gia-B0-KNg"/>
+            </connections>
+            <point key="canvasLocation" x="229.71014492753625" y="124.88839285714285"/>
+        </collectionViewCell>
+    </objects>
+    <resources>
+        <image name="image_movie" width="466.66665649414062" height="597.33331298828125"/>
+        <namedColor name="color_primary">
+            <color red="0.086000002920627594" green="0.10599999874830246" blue="0.14100000262260437" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+        </namedColor>
+    </resources>
+</document>
